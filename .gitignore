@@ -1,0 +1,29 @@
+# Python cache and artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Virtual environment files (repo currently sits inside a venv-like folder)
+Lib/
+Include/
+Scripts/
+share/
+pyvenv.cfg
+venv/
+.venv/
+
+# Model and large generated files
+*.h5
+*.keras
+*.ckpt
+
+# Generated image augmentation outputs
+data/*/output/
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
