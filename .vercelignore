@@ -1,0 +1,9 @@
+# Only web/ is deployed; skip the training side when uploading with the Vercel CLI.
+# Patterns are anchored with "/" so web/models/ is still uploaded.
+/data/
+/datasets/
+/models/
+/.venv/
+/.venv-export/
+/*.py
+/requirements*.txt

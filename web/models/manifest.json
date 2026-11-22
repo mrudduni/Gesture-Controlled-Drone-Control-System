@@ -1,0 +1,29 @@
+{
+  "models": [
+    {
+      "id": "legacy",
+      "name": "Original CNN",
+      "description": "Your first model: grayscale 224x224, trained only on your 600 captures.",
+      "file": "models/legacy_cnn.onnx",
+      "input_name": "image",
+      "input": {
+        "size": 224,
+        "channels": 1,
+        "scale": "0-1",
+        "crop": "legacy"
+      },
+      "classes": [
+        "down",
+        "hover",
+        "land",
+        "left",
+        "right",
+        "up"
+      ],
+      "params": 11169158,
+      "size_mb": 11.5,
+      "val_accuracy": null,
+      "val_accuracy_hagrid": null
+    }
+  ]
+}

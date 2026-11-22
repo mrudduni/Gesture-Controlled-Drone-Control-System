@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gesture Models</title>
+  <meta name="description" content="The four ways Gesture Drone recognises a hand: original CNN, new CNN, MobileNetV2 and custom gestures — compared, with architecture diagrams." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg stroke='%234ade80' stroke-width='3' fill='none'%3E%3Cpath d='M8 8l16 16M24 8L8 24'/%3E%3C/g%3E%3Cg fill='%234ade80'%3E%3Ccircle cx='7' cy='7' r='4'/%3E%3Ccircle cx='25' cy='7' r='4'/%3E%3Ccircle cx='7' cy='25' r='4'/%3E%3Ccircle cx='25' cy='25' r='4'/%3E%3C/g%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="models.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><g stroke="currentColor" stroke-width="3" fill="none"><path d="M8 8l16 16M24 8L8 24"/></g><g fill="currentColor"><circle cx="7" cy="7" r="4"/><circle cx="25" cy="7" r="4"/><circle cx="7" cy="25" r="4"/><circle cx="25" cy="25" r="4"/></g></svg>
+      <div>
+        <h1>Gesture Drone</h1>
+        <p>How the four recognisers work</p>
+      </div>
+    </div>
+    <nav class="page-nav">
+      <a href="index.html">Fly</a>
+      <a href="models.html" aria-current="page">Models &amp; architecture</a>
+    </nav>
+  </header>
+
+  <main class="doc">
+    <section class="hero">
+      <h2 class="eyebrow">Four ways to read a hand</h2>
+      <p class="lede">Every mode starts the same way: <b>MediaPipe</b> finds the hand and its 21 joints.
+        The three <b>CNNs</b> then look at a <em>picture</em> of the hand. <b>Custom</b> skips pictures
+        and compares the <em>joint positions</em> to examples you recorded.</p>
+      <div class="split-diagram" aria-label="Pipeline overview">
+        <div class="node src">Webcam frame</div>
+        <div class="arrow">→</div>
+        <div class="node mp">MediaPipe<br /><small>palm detector + 21 landmarks</small></div>
+        <div class="branches">
+          <div class="branch">
+            <span class="branch-label">image crop</span>
+            <div class="node m-legacy">① Original CNN<br /><small>gray 224 px</small></div>
+            <div class="node m-cnn">② New CNN<br /><small>RGB 128 px</small></div>
+            <div class="node m-mnv2">③ MobileNetV2<br /><small>RGB 128 px</small></div>
+          </div>
+          <div class="branch">
+            <span class="branch-label">21 joint points</span>
+            <div class="node m-custom">★ Custom<br /><small>k-nearest neighbours</small></div>
+          </div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="node src">Smoothing → action → drone</div>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="section-title">At a glance</h2>
+      <div class="table-wrap">
+        <table class="compare-table" id="glance">
+          <thead>
+            <tr>
+              <th></th>
+              <th class="c-legacy">① Original CNN</th>
+              <th class="c-cnn">② New CNN</th>
+              <th class="c-mnv2">③ MobileNetV2</th>
+              <th class="c-custom">★ Custom</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><th>What it looks at</th>
+              <td>Grayscale photo of the hand, 224×224, with the skeleton drawn on</td>
+              <td>Colour photo of the hand, 128×128</td>
+              <td>Colour photo of the hand, 128×128</td>
+              <td>21 joint positions (63 numbers), no pixels</td></tr>
+            <tr><th>Kind of model</th>
+              <td>Small CNN, trained from scratch</td>
+              <td>Deeper CNN with BatchNorm, trained from scratch</td>
+              <td>ImageNet-pretrained network, fine-tuned</td>
+              <td>No neural network of ours: nearest-neighbour vote</td></tr>
+            <tr><th>Learned from</th>
+              <td>Your 600 webcam photos (one person, one room)</td>
+              <td>Your photos + ~9,800 HaGRID photos (~6,000 people)</td>
+              <td>Same as ②, plus 1.3M ImageNet images before that</td>
+              <td>The samples <em>you</em> record in the browser (starter set from HaGRID)</td></tr>
+            <tr><th>Gestures</th>
+              <td>Fixed 6</td><td>Fixed 6</td><td>Fixed 6</td>
+              <td><b>Any</b>: add, rename, re-record, delete</td></tr>
+            <tr><th>Adding a gesture</th>
+              <td>Collect data, retrain in Python</td><td>Collect data, retrain in Python</td><td>Collect data, retrain in Python</td>
+              <td>Record 30 samples, works instantly</td></tr>
+            <tr><th>Parameters</th><td data-m="legacy" data-k="params">11.17M</td><td data-m="cnn" data-k="params">1.30M</td><td data-m="mobilenetv2" data-k="params">2.27M</td><td>0 (stores samples)</td></tr>
+            <tr><th>Download</th><td data-m="legacy" data-k="size">11.5 MB</td><td data-m="cnn" data-k="size">~5 MB</td><td data-m="mobilenetv2" data-k="size">~9 MB</td><td>~100 KB starter set</td></tr>
+            <tr><th>Accuracy, unseen people</th><td data-m="legacy" data-k="hagrid">—</td><td data-m="cnn" data-k="hagrid">—</td><td data-m="mobilenetv2" data-k="hagrid">—</td><td>96.1%<sup>†</sup></td></tr>
+            <tr><th>Weak spot</th>
+              <td>Only knows your hand, lighting and room; 11M of its weights sit in one layer that memorises</td>
+              <td>Learns everything from scratch, so it needs lots of data</td>
+              <td>Largest download of the new models</td>
+              <td>Only as good as the samples; can't see things the joints don't show (e.g. skin vs glove)</td></tr>
+            <tr><th>Best for</th>
+              <td>Baseline: shows where the project started</td>
+              <td>Fast, small, solid default</td>
+              <td>Most robust to new people, lighting and backgrounds</td>
+              <td>Your own gestures and actions</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted small note">† Custom: 30 samples per gesture recorded from <em>other</em> people, tested on new people (HaGRID).
+        Recording your own samples matches your hand more closely. CNN accuracies are from <code>compare_models.py</code> on held-out HaGRID people.</p>
+    </section>
+
+    <section>
+      <h2 class="section-title">Architectures</h2>
+      <p class="muted">Each row is a layer; the right-hand columns are the output shape (height × width × channels) and the number of learned weights. Colours: <span class="chip t-input">input</span> <span class="chip t-aug">augmentation</span> <span class="chip t-conv">convolution</span> <span class="chip t-pool">pooling</span> <span class="chip t-dense">dense / classifier</span> <span class="chip t-other">other</span></p>
+
+      <div class="arch-grid">
+        <article class="arch a-legacy">
+          <header>
+            <span class="badge">①</span>
+            <div><h3>Original CNN</h3><p>Your first model, from the original <code>cnn for grayscale.py</code></p></div>
+          </header>
+          <div class="layers" data-arch="legacy"></div>
+          <ul class="why">
+            <li><b>Flatten → Dense(128)</b> turns a 26×26×128 map into one long vector: 11.1M of the 11.2M weights are in that single layer. That's a lot of capacity for 600 photos, so it memorises.</li>
+            <li>The skeleton lines drawn on its training photos became a cue it relies on. The app redraws them the same way so it gets the input it expects.</li>
+            <li>The old augmentation wrote copies into the dataset folders, which leaked into validation and inflated its score.</li>
+          </ul>
+        </article>
+
+        <article class="arch a-cnn">
+          <header>
+            <span class="badge">②</span>
+            <div><h3>New CNN</h3><p>VGG-style, trained from scratch on RGB crops</p></div>
+          </header>
+          <div class="layers" data-arch="cnn"></div>
+          <ul class="why">
+            <li><b>Stride-2 stem</b> halves the image straight away, about 4× cheaper with no loss for a hand crop.</li>
+            <li><b>Pairs of 3×3 convs</b> see a 5×5 area with fewer weights; channels double as resolution halves.</li>
+            <li><b>BatchNorm</b> keeps training stable under heavy colour augmentation.</li>
+            <li><b>Global average pooling</b> instead of Flatten: no weights, ignores <em>where</em> a feature is, and 9× smaller than ①.</li>
+          </ul>
+        </article>
+
+        <article class="arch a-mnv2">
+          <header>
+            <span class="badge">③</span>
+            <div><h3>MobileNetV2</h3><p>Pretrained on ImageNet, fine-tuned on hands</p></div>
+          </header>
+          <div class="layers" data-arch="mobilenetv2"></div>
+          <ul class="why">
+            <li><b>Inverted residual blocks</b>: expand channels 6× with a 1×1 conv, filter each channel with a cheap depthwise 3×3, then squeeze back. That's most of the accuracy of a big CNN at a fraction of the compute.</li>
+            <li><b>Transfer learning</b>: edge, texture and shape detectors learned from 1.3M ImageNet photos carry over to hands, so it needs less hand data.</li>
+            <li><b>Two-phase training</b>: first only the new head (backbone frozen), then the top 40 layers are fine-tuned at a 10× lower learning rate. BatchNorm stays frozen throughout.</li>
+          </ul>
+        </article>
+
+        <article class="arch a-custom">
+          <header>
+            <span class="badge">★</span>
+            <div><h3>Custom gestures</h3><p>Nearest-neighbour on hand landmarks, running in your browser</p></div>
+          </header>
+          <div class="layers" data-arch="custom"></div>
+          <ul class="why">
+            <li><b>Normalised joints</b>: positions relative to the wrist, divided by hand size. The same pose matches whether your hand is near, far, left or right in the frame, but pointing left and pointing right stay different.</li>
+            <li><b>k = 5 nearest samples</b> vote, closer ones counting more.</li>
+            <li><b>“Unknown” threshold</b> (0.25): if nothing you recorded is close, it does nothing instead of guessing. Calibrated on HaGRID, where same-gesture distances are mostly &lt; 0.17 and different gestures mostly &gt; 0.25.</li>
+            <li>No training step, so new gestures work the moment they're recorded.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="section-title">What happens after a prediction (all modes)</h2>
+      <ol class="steps">
+        <li><b>Majority vote</b> over the last 7 frames, so one bad frame can't flip the gesture.</li>
+        <li><b>Confidence ≥ 70%</b>, averaged over those frames.</li>
+        <li><b>Held for 0.4 s</b> before it acts.</li>
+        <li>The gesture's <b>action</b> (editable in the Gestures tab) moves the drone: continuously for movement, once for take off / land.</li>
+      </ol>
+      <p><a class="btn primary" href="index.html">← Back to flying</a></p>
+    </section>
+  </main>
+
+  <footer class="foot muted small">Datasets: your captures · HaGRID (CC BY-SA 4.0) · ImageNet (MobileNetV2 pretraining). Hand tracking: MediaPipe.</footer>
+  <script type="module" src="js/models-page.js"></script>
+</body>
+</html>

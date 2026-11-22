@@ -1,0 +1,5 @@
+# Only for export_web_models.py (separate venv: tf2onnx needs protobuf 3.20)
+tensorflow==2.13.0
+tf2onnx==1.16.1
+onnxruntime==1.17.3
+numpy==1.24.3
