@@ -33,11 +33,12 @@ export async function initHands() {
   mode = "VIDEO";
 }
 
+/** Switch VIDEO/IMAGE mode; returns true if a switch happened. */
 async function setMode(m) {
-  if (mode !== m) {
-    await landmarker.setOptions({ runningMode: m });
-    mode = m;
-  }
+  if (mode === m) return false;
+  await landmarker.setOptions({ runningMode: m });
+  mode = m;
+  return true;
 }
 
 /** Landmarks (21 × {x,y,z}, normalised) of the first hand in a video frame, or null. */
@@ -49,8 +50,10 @@ export async function detectVideo(source, timestampMs) {
 
 /** Same for a still image. */
 export async function detectImage(source) {
-  await setMode("IMAGE");
-  const r = landmarker.detect(source);
+  const switched = await setMode("IMAGE");
+  let r = landmarker.detect(source);
+  // The first detection right after a mode switch can come back empty; try once more.
+  if (switched && !(r.landmarks && r.landmarks.length)) r = landmarker.detect(source);
   return r.landmarks && r.landmarks.length ? r.landmarks[0] : null;
 }
 

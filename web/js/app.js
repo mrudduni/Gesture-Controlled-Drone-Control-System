@@ -267,7 +267,14 @@ async function cameraTick(now) {
 
 // ------------------------------------------------------------------ still images
 
-async function runOnImage(img) {
+let imageQueue = Promise.resolve();
+/** Run on a still image; calls are queued so quick clicks can't interleave. */
+function runOnImage(img) {
+  imageQueue = imageQueue.then(() => runOnImageNow(img)).catch((e) => console.error(e));
+  return imageQueue;
+}
+
+async function runOnImageNow(img) {
   if (!handsReady) return toast("Hand tracker is still loading…");
   if (cameraOn) stopCamera();
   const scale = Math.min(1, 1280 / Math.max(img.naturalWidth, img.naturalHeight));
@@ -705,7 +712,9 @@ async function main() {
     manifest = { models: [] };
   }
   for (const entry of manifest.models) models.set(entry.id, new OnnxModel(entry));
-  if (state.modelId !== "custom" && !models.has(state.modelId)) state.modelId = models.has("cnn") ? "cnn" : "custom";
+  if (state.modelId !== "custom" && !models.has(state.modelId)) {
+    state.modelId = ["mobilenetv2", "cnn", "legacy"].find((id) => models.has(id)) || "custom";
+  }
   renderModelSwitch();
   renderCompare();
 

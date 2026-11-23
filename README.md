@@ -128,7 +128,7 @@ There are two interchangeable models, picked with `--arch` in both
 (0–255) and output six class probabilities, so the rest of the pipeline doesn't
 care which one is loaded.
 
-### Option 1: custom CNN (`--arch cnn`, default)
+### Option 1: custom CNN (`--arch cnn`)
 
 A VGG-style network trained from scratch: **1.30M parameters, about 5 MB**.
 
@@ -147,7 +147,7 @@ flowchart TB
     DO --> OUT["Dense 6 · softmax<br/>down · hover · land · left · right · up"]
 ```
 
-### Option 2: pretrained MobileNetV2 (`--arch mobilenetv2`)
+### Option 2: pretrained MobileNetV2 (`--arch mobilenetv2`, default)
 
 MobileNetV2 with ImageNet weights as the feature extractor, plus a new
 classifier head. The weights (about 9 MB) download automatically the first time.
@@ -239,8 +239,8 @@ pip install -r requirements.txt
 ### 1. Run the simulator with an included model
 
 ```bash
-python drone_simulation.py                      # custom CNN
-python drone_simulation.py --arch mobilenetv2   # MobileNetV2
+python drone_simulation.py                      # MobileNetV2 (default, most accurate)
+python drone_simulation.py --arch cnn           # new CNN
 python drone_simulation.py --camera 1           # different webcam
 ```
 
@@ -251,8 +251,8 @@ Movement gestures move the drone continuously while held; `land` fires once.
 
 ```bash
 python prepare_hagrid.py                    # downloads ~1 GB once, writes datasets/hagrid_crops/
-python train_cnn.py                         # custom CNN, your captures + HaGRID
-python train_cnn.py --arch mobilenetv2      # pretrained MobileNetV2
+python train_cnn.py                         # MobileNetV2 (default), your captures + HaGRID
+python train_cnn.py --arch cnn              # new CNN from scratch
 python train_cnn.py --no-hagrid             # your captures only
 ```
 
@@ -283,7 +283,61 @@ frames per gesture, spaced 0.1 s apart, and never overwrites existing files.
 
 ## Results
 
-RESULTS_PLACEHOLDER
+All three models scored on the same held-out images by `compare_models.py`:
+120 of your captures (the last 20% of each class) and 1,474 HaGRID crops of
+people none of the models trained on.
+
+| Model | Your captures | HaGRID (unseen people) | All | Macro F1 | Params | Keras file | Web (ONNX) |
+|---|---|---|---|---|---|---|---|
+| ① Original CNN (grayscale 224) | 100.0%* | 24.9% | 30.6% | 0.298 | 11.17M | 134.1 MB | 11.5 MB |
+| ② New CNN (RGB 128) | 84.2% | **99.7%** | 98.6% | 0.985 | 1.30M | 15.7 MB | 5.2 MB |
+| ③ MobileNetV2 (RGB 128) | **98.3%** | 99.6% | **99.5%** | **0.995** | 2.27M | 23.0 MB | 8.9 MB |
+
+\* The original CNN was trained on *all* of `data/`, including these 120
+images, so that number flatters it. Its 24.9% on new people (chance is 16.7%)
+is the honest measure: it learned your hand, your lighting and the skeleton
+overlay, not the gestures.
+
+Per-class accuracy over all validation images:
+
+| Model | down | hover | land | left | right | up |
+|---|---|---|---|---|---|---|
+| ① Original CNN | 43% | 26% | 11% | 43% | 34% | 25% |
+| ② New CNN | 100% | 100% | 92% | 100% | 99% | 100% |
+| ③ MobileNetV2 | 100% | 100% | 100% | 100% | 100% | 98% |
+
+**Takeaways**
+
+- **More varied data made the biggest difference.** Both new models train on
+  about 9,800 HaGRID crops from thousands of people, and both go from about 25%
+  to above 99% on people they've never seen.
+- **MobileNetV2 is the most accurate overall.** Its ImageNet pretraining makes
+  it robust on *your* setup too (98.3% vs 84.2% for the new CNN), which matters
+  most for flying with your own webcam. It's the recommended default.
+- **The new CNN is the smallest and fastest** (5.2 MB in the browser). It's
+  nearly perfect on HaGRID but weaker on your old grayscale captures, mainly
+  `land`. Recording a few hundred new colour captures with `data_collection.py`
+  and retraining should close that gap.
+- **Custom gestures** (nearest-neighbour on landmarks, in the web app) reach
+  96.1% on new people with 30 samples per gesture, and need no training at all.
+
+Training notes:
+- MobileNetV2 trained 16 epochs: 5 with the backbone frozen (77% validation
+  accuracy), then 11 fine-tuning, where validation accuracy jumped to 98% in
+  the first fine-tuning epoch.
+- The new CNN was stopped after epoch 14 of 20, at about 33 minutes per epoch
+  on a laptop CPU. The best checkpoint (epoch 12) is kept.
+- Training curves are in `models/*_curves.png`.
+
+Single-image latency on a laptop CPU (i5-1135G7):
+
+| | ① Original | ② New CNN | ③ MobileNetV2 |
+|---|---|---|---|
+| Keras (Python) | 39 ms | 52 ms | 207 ms |
+| Browser (ONNX Runtime Web, WASM) | 56–66 ms | 23–41 ms | 17–39 ms |
+
+In the browser both new models run in real time. The original is slower there
+despite fewer layers, because of its 11M-weight Dense layer and its 224 px input.
 
 ## Project layout
 

@@ -91,6 +91,7 @@ try {
     if (k === "params") td.textContent = `${(m.params / 1e6).toFixed(2)}M`;
     else if (k === "size") td.textContent = `${m.size_mb} MB`;
     else if (k === "hagrid" && m.val_accuracy_hagrid != null) td.textContent = `${(m.val_accuracy_hagrid * 100).toFixed(1)}%`;
+    else if (k === "own" && m.val_accuracy_own != null) td.textContent = `${(m.val_accuracy_own * 100).toFixed(1)}%${m.id === "legacy" ? "*" : ""}`;
   }
 } catch {
   /* manifest missing: keep the static values */

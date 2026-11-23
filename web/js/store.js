@@ -45,7 +45,7 @@ const COLORS = ["#4ade80", "#60a5fa", "#f472b6", "#facc15", "#a78bfa", "#fb923c"
 
 function defaults() {
   return {
-    modelId: "cnn",
+    modelId: "mobilenetv2", // most accurate overall (see compare_models.py)
     builtinMap: { ...DEFAULT_BUILTIN_MAP },
     settings: { ...DEFAULT_SETTINGS },
     custom: [], // [{id, name, action, color, samples: number[][]}]

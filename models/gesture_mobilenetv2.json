@@ -1,0 +1,19 @@
+{
+  "arch": "mobilenetv2",
+  "class_names": [
+    "down",
+    "hover",
+    "land",
+    "left",
+    "right",
+    "up"
+  ],
+  "img_size": 128,
+  "params": 2265670,
+  "val_accuracy": 0.9949811794228356,
+  "val_accuracy_own": 0.9833333333333333,
+  "val_accuracy_hagrid": 0.9959294436906377,
+  "train_images": 10205,
+  "val_images": 1594,
+  "used_hagrid": true
+}

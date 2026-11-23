@@ -1,8 +1,8 @@
 """Train the RGB gesture classifier.
 
 Two architectures (pick with --arch):
-  cnn          small VGG-style CNN trained from scratch (default, ~1.3M params)
-  mobilenetv2  MobileNetV2 pretrained on ImageNet (downloads ~9 MB of weights
+  cnn          small VGG-style CNN trained from scratch (~1.3M params)
+  mobilenetv2  (default) MobileNetV2 pretrained on ImageNet (downloads ~9 MB of weights
                once). Trained in two phases: first only the new classifier head
                with the backbone frozen, then the top of the backbone is
                unfrozen and fine-tuned at a low learning rate.
@@ -21,8 +21,8 @@ rotation/zoom/shift, and horizontal flips that swap the left/right labels), so
 there is no separate augmentation step.
 
 Usage:
-  python train_cnn.py                       # CNN, own data + HaGRID crops
-  python train_cnn.py --arch mobilenetv2    # pretrained MobileNetV2
+  python train_cnn.py                       # MobileNetV2, own data + HaGRID crops
+  python train_cnn.py --arch cnn            # small CNN from scratch
   python train_cnn.py --no-hagrid           # own data only
   python train_cnn.py --epochs 40
 """

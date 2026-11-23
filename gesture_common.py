@@ -23,7 +23,7 @@ ARCHES = {
     "cnn": "gesture_cnn_rgb",
     "mobilenetv2": "gesture_mobilenetv2",
 }
-DEFAULT_ARCH = "cnn"
+DEFAULT_ARCH = "mobilenetv2"  # most accurate overall (see compare_models.py)
 
 
 def model_paths(arch=DEFAULT_ARCH):

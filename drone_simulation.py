@@ -5,8 +5,8 @@ Gestures (once flying): up / down / left / right move the drone while held,
 hover holds position, land lands it.
 
 Usage:
-  python drone_simulation.py                      # small CNN (default)
-  python drone_simulation.py --arch mobilenetv2   # fine-tuned MobileNetV2
+  python drone_simulation.py                      # fine-tuned MobileNetV2 (default)
+  python drone_simulation.py --arch cnn           # small CNN
 """
 import argparse
 import time

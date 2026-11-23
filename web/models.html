@@ -89,21 +89,24 @@
             <tr><th>Parameters</th><td data-m="legacy" data-k="params">11.17M</td><td data-m="cnn" data-k="params">1.30M</td><td data-m="mobilenetv2" data-k="params">2.27M</td><td>0 (stores samples)</td></tr>
             <tr><th>Download</th><td data-m="legacy" data-k="size">11.5 MB</td><td data-m="cnn" data-k="size">~5 MB</td><td data-m="mobilenetv2" data-k="size">~9 MB</td><td>~100 KB starter set</td></tr>
             <tr><th>Accuracy, unseen people</th><td data-m="legacy" data-k="hagrid">—</td><td data-m="cnn" data-k="hagrid">—</td><td data-m="mobilenetv2" data-k="hagrid">—</td><td>96.1%<sup>†</sup></td></tr>
+            <tr><th>Accuracy, your captures</th><td data-m="legacy" data-k="own">—</td><td data-m="cnn" data-k="own">—</td><td data-m="mobilenetv2" data-k="own">—</td><td>— (record your own)</td></tr>
             <tr><th>Weak spot</th>
               <td>Only knows your hand, lighting and room; 11M of its weights sit in one layer that memorises</td>
-              <td>Learns everything from scratch, so it needs lots of data</td>
+              <td>Learns everything from scratch; weaker on your old grayscale captures (84%), mostly <em>land</em></td>
               <td>Largest download of the new models</td>
               <td>Only as good as the samples; can't see things the joints don't show (e.g. skin vs glove)</td></tr>
             <tr><th>Best for</th>
               <td>Baseline: shows where the project started</td>
-              <td>Fast, small, solid default</td>
-              <td>Most robust to new people, lighting and backgrounds</td>
+              <td>Smallest download, near-perfect on new people</td>
+              <td><b>Recommended default</b>: most accurate overall, on new people and on yours</td>
               <td>Your own gestures and actions</td></tr>
           </tbody>
         </table>
       </div>
       <p class="muted small note">† Custom: 30 samples per gesture recorded from <em>other</em> people, tested on new people (HaGRID).
-        Recording your own samples matches your hand more closely. CNN accuracies are from <code>compare_models.py</code> on held-out HaGRID people.</p>
+        Recording your own samples matches your hand more closely. CNN accuracies are from <code>compare_models.py</code>:
+        1,474 HaGRID crops of unseen people and 120 held-out captures of yours.
+        The original CNN trained on all of your captures, so its “your captures” score is flattering. Chance level is 16.7%.</p>
     </section>
 
     <section>
