@@ -1,0 +1,82 @@
+{
+  "models": [
+    {
+      "id": "legacy",
+      "name": "Original CNN",
+      "description": "Your first model: grayscale 224x224, trained only on your 600 captures.",
+      "file": "models/legacy_cnn.onnx",
+      "input_name": "image",
+      "input": {
+        "size": 224,
+        "channels": 1,
+        "scale": "0-1",
+        "crop": "legacy"
+      },
+      "classes": [
+        "down",
+        "hover",
+        "land",
+        "left",
+        "right",
+        "up"
+      ],
+      "params": 11169158,
+      "size_mb": 11.5,
+      "val_accuracy": 0.3055207026348808,
+      "val_accuracy_hagrid": 0.24898236092265943,
+      "val_accuracy_own": 1.0
+    },
+    {
+      "id": "cnn",
+      "name": "New CNN",
+      "description": "VGG-style CNN, RGB 128x128, your captures + HaGRID.",
+      "file": "models/cnn_rgb.onnx",
+      "input_name": "image",
+      "input": {
+        "size": 128,
+        "channels": 3,
+        "scale": "0-255",
+        "crop": "padded"
+      },
+      "classes": [
+        "down",
+        "hover",
+        "land",
+        "left",
+        "right",
+        "up"
+      ],
+      "params": 1296358,
+      "size_mb": 5.2,
+      "val_accuracy": 0.9855708908406524,
+      "val_accuracy_hagrid": 0.9972862957937585,
+      "val_accuracy_own": 0.8416666666666667
+    },
+    {
+      "id": "mobilenetv2",
+      "name": "MobileNetV2",
+      "description": "Pretrained MobileNetV2 fine-tuned on your captures + HaGRID, RGB 128x128.",
+      "file": "models/mobilenetv2.onnx",
+      "input_name": "image",
+      "input": {
+        "size": 128,
+        "channels": 3,
+        "scale": "0-255",
+        "crop": "padded"
+      },
+      "classes": [
+        "down",
+        "hover",
+        "land",
+        "left",
+        "right",
+        "up"
+      ],
+      "params": 2265670,
+      "size_mb": 8.9,
+      "val_accuracy": 0.9949811794228356,
+      "val_accuracy_hagrid": 0.9959294436906377,
+      "val_accuracy_own": 0.9833333333333333
+    }
+  ]
+}

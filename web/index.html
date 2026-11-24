@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gesture Drone</title>
+  <meta name="description" content="Fly a simulated drone with hand gestures. Switch between three trained CNNs or teach it your own gestures — all in your browser." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg stroke='%234ade80' stroke-width='3' fill='none'%3E%3Cpath d='M8 8l16 16M24 8L8 24'/%3E%3C/g%3E%3Cg fill='%234ade80'%3E%3Ccircle cx='7' cy='7' r='4'/%3E%3Ccircle cx='25' cy='7' r='4'/%3E%3Ccircle cx='7' cy='25' r='4'/%3E%3Ccircle cx='25' cy='25' r='4'/%3E%3C/g%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.3/dist/ort.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><g stroke="currentColor" stroke-width="3" fill="none"><path d="M8 8l16 16M24 8L8 24"/></g><g fill="currentColor"><circle cx="7" cy="7" r="4"/><circle cx="25" cy="7" r="4"/><circle cx="7" cy="25" r="4"/><circle cx="25" cy="25" r="4"/></g></svg>
+      <div>
+        <h1>Gesture Drone</h1>
+        <p>Hand-gesture flight control, running entirely in your browser</p>
+      </div>
+    </div>
+    <nav class="model-switch" id="modelSwitch" aria-label="Classifier"></nav>
+    <a class="btn ghost small" href="models.html" title="What each model is and how it's built">Models &amp; architecture →</a>
+    <div class="status" id="status"><span class="dot"></span><span id="statusText">Loading…</span></div>
+  </header>
+
+  <main class="layout">
+    <!-- Camera -->
+    <section class="panel camera-panel">
+      <div class="panel-head">
+        <h2>Camera</h2>
+        <div class="row">
+          <button id="cameraBtn" class="btn primary">Start camera</button>
+          <label class="btn" title="Run the models on a photo instead of the webcam">
+            Test image<input id="imageInput" type="file" accept="image/*" hidden />
+          </label>
+        </div>
+      </div>
+      <div class="stage" id="stage">
+        <canvas id="view"></canvas>
+        <div class="stage-empty" id="stageEmpty">
+          <p><strong>Start the camera</strong> and hold one hand up,<br />or pick a sample photo below.</p>
+        </div>
+        <figure class="crop-preview" id="cropFigure" hidden>
+          <canvas id="cropCanvas"></canvas>
+          <figcaption>model input</figcaption>
+        </figure>
+        <div class="record-banner" id="recordBanner" hidden></div>
+      </div>
+      <div class="samples">
+        <span class="muted small">Sample photos (HaGRID):</span>
+        <div class="sample-row" id="sampleRow"></div>
+      </div>
+      <video id="video" playsinline muted hidden></video>
+    </section>
+
+    <!-- Drone -->
+    <section class="panel drone-panel">
+      <div class="panel-head">
+        <h2>Drone</h2>
+        <div class="row">
+          <button id="takeoffBtn" class="btn">Take off <kbd>T</kbd></button>
+          <button id="landBtn" class="btn">Land <kbd>L</kbd></button>
+          <button id="resetBtn" class="btn ghost">Reset <kbd>R</kbd></button>
+        </div>
+      </div>
+      <canvas id="droneCanvas" class="drone-canvas"></canvas>
+      <div class="telemetry" id="telemetry"></div>
+      <div class="gesture-card" id="gestureCard">
+        <div class="gesture-label muted small">Detected gesture</div>
+        <div class="gesture-main">
+          <span class="gesture-name" id="gestureName">—</span>
+          <span class="gesture-conf" id="gestureConf"></span>
+        </div>
+        <div class="gesture-action" id="gestureAction">No hand</div>
+        <div class="probs" id="probs"></div>
+      </div>
+    </section>
+
+    <!-- Tabs -->
+    <section class="panel tabs-panel">
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-tab="gestures" role="tab">Gestures</button>
+        <button class="tab" data-tab="compare" role="tab">Compare models</button>
+        <button class="tab" data-tab="settings" role="tab">Settings</button>
+      </div>
+
+      <div class="tab-body" data-body="gestures">
+        <div id="builtinSection">
+          <h3>Model gestures</h3>
+          <p class="muted small">The three trained models know these six hand poses. Choose what each one makes the drone do.</p>
+          <div class="map-grid" id="builtinMap"></div>
+        </div>
+        <div id="customSection">
+          <div class="section-head">
+            <h3>Custom gestures</h3>
+            <div class="row">
+              <button id="addGestureBtn" class="btn primary small">+ New gesture</button>
+              <button id="starterBtn" class="btn small ghost" title="Thumbs up/down, palm, fist, point left/right, peace sign">Add starter set</button>
+              <button id="exportBtn" class="btn small ghost">Export</button>
+              <label class="btn small ghost">Import<input id="importInput" type="file" accept="application/json,.json" hidden /></label>
+            </div>
+          </div>
+          <p class="muted small">Teach any hand pose you like. Record ~30 samples per gesture (move your hand around a little while recording), pick an action, then switch to <strong>Custom</strong> at the top. The starter set comes from other people's hands; recording your own samples on top makes it more accurate for you. Saved in this browser only.</p>
+          <div id="customList" class="custom-list"></div>
+        </div>
+      </div>
+
+      <div class="tab-body" data-body="compare" hidden>
+        <p class="muted small">Every trained model runs on the same hand crop. Accuracy is measured on held-out images; HaGRID = people none of the models trained on. *The original CNN trained on all of your captures, so its “your captures” score is flattering.
+          <a href="models.html">How each model works →</a></p>
+        <div id="compareGrid" class="compare-grid"></div>
+      </div>
+
+      <div class="tab-body" data-body="settings" hidden>
+        <div class="settings" id="settings"></div>
+        <div class="row" style="margin-top:12px">
+          <button id="resetSettingsBtn" class="btn small ghost">Reset settings</button>
+          <button id="clearAllBtn" class="btn small danger">Delete all custom gestures</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot muted small">
+    Hand tracking: MediaPipe · Models: ONNX Runtime Web · Sample photos: HaGRID (CC BY-SA 4.0). Video never leaves your device.
+  </footer>
+
+  <div class="toast" id="toast" hidden></div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

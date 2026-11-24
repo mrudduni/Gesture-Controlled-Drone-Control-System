@@ -1,29 +1,33 @@
-# Python cache and artifacts
+# Python
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
 .pytest_cache/
 
-# Virtual environment files (repo currently sits inside a venv-like folder)
+# Virtual environments
+venv/
+.venv/
+.venv-export/
 Lib/
 Include/
 Scripts/
 share/
 pyvenv.cfg
-venv/
-.venv/
 
-# Model and large generated files
+# Downloaded / generated datasets (re-create with prepare_hagrid.py)
+datasets/
+
+# Old models and checkpoints. The current model (models/gesture_cnn_rgb.keras) is tracked.
 *.h5
-*.keras
 *.ckpt
 
-# Generated image augmentation outputs
+# Old Augmentor output folders
 data/*/output/
 
-# OS / editor junk
+# OS / editor
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
+
+.vercel
+.env*

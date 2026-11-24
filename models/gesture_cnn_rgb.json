@@ -1,0 +1,17 @@
+{
+  "arch": "cnn",
+  "class_names": [
+    "down",
+    "hover",
+    "land",
+    "left",
+    "right",
+    "up"
+  ],
+  "img_size": 128,
+  "params": 1296358,
+  "best_epoch": 12,
+  "epochs_run": 14,
+  "note": "training stopped manually after epoch 14; best checkpoint (epoch 12) kept",
+  "used_hagrid": true
+}
