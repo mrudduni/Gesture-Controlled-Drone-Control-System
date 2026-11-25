@@ -39,6 +39,7 @@ export const DEFAULT_SETTINGS = {
   // HaGRID: same-gesture nearest distance p90 = 0.17, other-gesture p10 = 0.25.
   knnMaxDistance: 0.25,
   mirror: true,
+  view: "3d", // drone view: "3d" or "map"
 };
 
 const COLORS = ["#4ade80", "#60a5fa", "#f472b6", "#facc15", "#a78bfa", "#fb923c", "#2dd4bf", "#f87171"];

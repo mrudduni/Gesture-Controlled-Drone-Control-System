@@ -14,9 +14,18 @@ There are two ways to run it:
 - **Desktop scripts** (Python + OpenCV): collect data, train, compare models,
   and run the original OpenCV simulator.
 
+**Live:** https://gesture-controlled-drone.vercel.app
+
+![Demo: thumbs up takes off and climbs, pointing strafes, palm hovers, fist lands](demo/demo.gif)
+
+*Demo recorded from the web app with MobileNetV2. The "webcam" is a sequence of
+HaGRID photos of people the model never trained on ([full-quality MP4](demo/demo.mp4)).
+Re-record it with `node scripts/record_demo.mjs` (Node 22+ and Edge or Chrome), then
+`pip install imageio-ffmpeg` and `python scripts/make_demo_video.py`.*
+
 | Gesture | Command | Hand pose |
 |---|---|---|
-| `up` | climb | thumbs up |
+| `up` | climb (takes off when landed) | thumbs up |
 | `down` | descend | thumbs down |
 | `left` | move left | index finger pointing left (as seen on screen) |
 | `right` | move right | index finger pointing right (as seen on screen) |
@@ -41,9 +50,10 @@ flowchart LR
 | Feature | Details |
 |---|---|
 | **Model switcher** | `1` Original CNN · `2` New CNN · `3` MobileNetV2 · `4` Custom (buttons or number keys). Models download on first use (11.5 MB / ~5 MB / ~9 MB) and run with [ONNX Runtime Web](https://onnxruntime.ai/docs/tutorials/web/). |
-| **Editable gesture → action map** | Each of the six trained gestures can trigger any action: take off, land, climb, descend, strafe left/right, forward, backward, rotate left/right, hover, or nothing. |
+| **Editable gesture → action map** | Each of the six trained gestures can trigger any action: take off, land, climb, descend, strafe left/right, forward, backward, rotate left/right, hover, or nothing. The trained models have no "take off" pose, so the Climb gesture (thumbs up) takes off when the drone is on the ground. |
 | **Custom gestures** | Add a gesture, name it, choose an action, and press **Record** (30 samples from the webcam, or **+ Add photo** from a still image). Rename, re-record, clear or delete any time. Export/import as JSON. A starter set of 7 gestures (thumbs up/down, palm, fist, point left/right, peace sign) loads on the first visit. |
 | **Compare models** | Runs every trained model on the same hand crop and shows each one's prediction, confidence and latency, next to its validation accuracy. |
+| **3D drone view** | A [three.js](https://threejs.org/) scene with a chase camera, spinning rotors, tilt in the direction of travel, shadow, altitude line and flight trail. Takeoff and landing are animated. Switch to the top-down **Map** with the toggle or `V`. |
 | **Test without a webcam** | Six sample photos (HaGRID, people no model trained on) or **Test image** to upload your own. |
 | **Settings** | Confidence threshold, hold time, smoothing window, drone speed, custom-gesture k and match distance, mirror on/off. |
 | **Privacy** | Video never leaves the device. Gestures and settings are stored in the browser's `localStorage`. |
@@ -244,8 +254,9 @@ python drone_simulation.py --arch cnn           # new CNN
 python drone_simulation.py --camera 1           # different webcam
 ```
 
-Press **T** to take off, then use gestures. **L** lands, **R** re-centres, **Q** quits.
-Movement gestures move the drone continuously while held; `land` fires once.
+Hold a **thumbs up** (or press **T**) to take off; the drone climbs to cruise altitude, then follows your gestures.
+**L** lands, **R** re-centres, **Q** quits. Movement gestures move the drone continuously while held; `land` (fist)
+fires once and the drone descends to the ground.
 
 ### 2. (Optional) Get the HaGRID data and retrain
 
@@ -348,6 +359,7 @@ web/                     the browser app (deployed to Vercel)
   js/vision.js           MediaPipe hand tracking + the same crops as gesture_common.py
   js/classifiers.js      ONNX models, k-NN for custom gestures, smoothing
   js/drone.js            drone simulator + top-down renderer
+  js/drone3d.js          3D view (three.js, loaded on first use)
   js/store.js            actions, settings, localStorage, import/export
   models/                ONNX models + manifest.json (from export_web_models.py)
   samples/               test photos (HaGRID)
@@ -363,6 +375,9 @@ train_cnn.py             train + evaluate (--arch cnn | mobilenetv2)
 compare_models.py        score all three models on the same held-out images
 export_web_models.py     Keras -> ONNX for the web app (uses requirements-export.txt)
 drone_simulation.py      desktop OpenCV simulator (--arch cnn | mobilenetv2)
+scripts/record_demo.mjs  records the demo (headless Edge/Chrome, fake webcam of sample photos)
+scripts/make_demo_video.py  frames -> demo/demo.mp4 + demo/demo.gif
+demo/                    demo video and GIF
 vercel.json              static deployment config (serves web/)
 ```
 

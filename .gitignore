@@ -7,11 +7,14 @@ __pycache__/
 venv/
 .venv/
 .venv-export/
-Lib/
-Include/
-Scripts/
-share/
-pyvenv.cfg
+# (a venv created in the repo root; anchored so subfolders aren't caught)
+/Lib/
+/Include/
+/Scripts/
+/share/
+/pyvenv.cfg
+# git ignores case on Windows, so keep the scripts/ folder despite /Scripts/ above
+!/scripts/
 
 # Downloaded / generated datasets (re-create with prepare_hagrid.py)
 datasets/
@@ -31,3 +34,6 @@ Thumbs.db
 
 .vercel
 .env*
+
+# Demo recorder scratch frames
+demo/frames/

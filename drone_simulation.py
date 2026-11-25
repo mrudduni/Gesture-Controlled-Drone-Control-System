@@ -1,8 +1,8 @@
 """Real-time gesture-controlled drone simulation.
 
 Keys: T takeoff, L land, R reset position, Q quit.
-Gestures (once flying): up / down / left / right move the drone while held,
-hover holds position, land lands it.
+Gestures: thumbs up ("up") takes off while landed; once flying, up / down /
+left / right move the drone while held, hover holds position, land lands it.
 
 Usage:
   python drone_simulation.py                      # fine-tuned MobileNetV2 (default)
@@ -43,39 +43,72 @@ ACTION_NAMES = {
 
 
 class DroneSimulator:
-    """2-D drone: x is left/right (-150..150), y is height (0..200)."""
+    """2-D drone: x is left/right (-150..150), y is height (0..200).
+
+    phase: landed -> takeoff (climbing to CRUISE_ALT) -> flying -> landing -> landed
+    """
+
+    CRUISE_ALT = 50.0
+    CLIMB_RATE = 60.0  # units per second during takeoff
+    SINK_RATE = 70.0   # units per second during landing
 
     def __init__(self):
         self.x = 0.0
         self.y = 0.0
-        self.is_flying = False
+        self.phase = "landed"
         self.battery = 100
         self.speed = 60.0  # units per second
         self.boundary_x = 150
         self.boundary_y = 200
         self.min_flying_height = 20
 
+    @property
+    def is_flying(self):
+        return self.phase != "landed"
+
+    @property
+    def status(self):
+        return {"landed": "LANDED", "takeoff": "TAKING OFF", "flying": "FLYING", "landing": "LANDING"}[self.phase]
+
     def takeoff(self):
-        if self.is_flying:
+        if self.phase == "takeoff":
+            return "Taking off..."
+        if self.phase == "flying":
             return "Already flying"
-        self.is_flying, self.y = True, 50.0
-        return "Takeoff"
+        self.phase = "takeoff"  # also aborts a landing in progress
+        return "Taking off"
 
     def land(self):
-        if not self.is_flying:
+        if self.phase == "landed":
             return "Already landed"
-        self.is_flying, self.y = False, 0.0
-        return "Landed"
+        if self.phase == "landing":
+            return "Landing..."
+        self.phase = "landing"
+        return "Landing"
+
+    def update(self, dt):
+        """Advance the takeoff/landing animation; call once per frame."""
+        if self.phase == "takeoff":
+            self.y = min(self.CRUISE_ALT, self.y + self.CLIMB_RATE * dt)
+            if self.y >= self.CRUISE_ALT:
+                self.phase = "flying"
+        elif self.phase == "landing":
+            self.y = max(0.0, self.y - self.SINK_RATE * dt)
+            if self.y <= 0:
+                self.phase = "landed"
 
     def move(self, dx, dy, dt):
-        if not self.is_flying:
+        if self.phase != "flying":
             return
         self.x = float(np.clip(self.x + dx * self.speed * dt, -self.boundary_x, self.boundary_x))
         self.y = float(np.clip(self.y + dy * self.speed * dt, self.min_flying_height, self.boundary_y))
 
     def reset(self):
         self.x = 0.0
-        self.y = 50.0 if self.is_flying else 0.0
+        if self.phase == "landed":
+            self.y = 0.0
+        else:
+            self.phase, self.y = "flying", self.CRUISE_ALT
 
 
 MOVES = {"up": (0, 1), "down": (0, -1), "left": (-1, 0), "right": (1, 0)}
@@ -144,10 +177,10 @@ def draw_ui(frame, drone, trail, gesture, confidence, probs, class_names, active
     cv2.putText(frame, "SIMULATION", (20, 72), cv2.FONT_HERSHEY_SIMPLEX, 0.6, COLORS["secondary"], 1)
 
     status_color = COLORS["success"] if drone.is_flying else COLORS["text_dim"]
-    cv2.circle(frame, (w - 200, 40), 12, status_color, -1)
-    cv2.putText(frame, "FLYING" if drone.is_flying else "LANDED", (w - 180, 48),
+    cv2.circle(frame, (w - 250, 40), 12, status_color, -1)
+    cv2.putText(frame, drone.status, (w - 230, 48),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.8, status_color, 2)
-    cv2.putText(frame, f"Battery: {drone.battery}%", (w - 200, 78),
+    cv2.putText(frame, f"Battery: {drone.battery}%", (w - 250, 78),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.55, COLORS["success"], 1)
 
     # Right panel
@@ -227,7 +260,7 @@ def main():
     drone = DroneSimulator()
     trail = deque(maxlen=20)
     prob_window = deque(maxlen=SMOOTHING_WINDOW)
-    stable_gesture, stable_since, land_fired = None, 0.0, False
+    stable_gesture, stable_since, fired = None, 0.0, False
     last_t = time.time()
     print(__doc__)
 
@@ -256,15 +289,19 @@ def main():
                 gesture = class_names[idx]
 
                 if gesture != stable_gesture:
-                    stable_gesture, stable_since, land_fired = gesture, now, False
+                    stable_gesture, stable_since, fired = gesture, now, False
                 active = confidence >= CONFIDENCE_THRESHOLD and now - stable_since >= HOLD_TIME
 
-                if active and drone.is_flying:
-                    if gesture in MOVES:
+                if active:
+                    # No class means "take off", so thumbs up takes off while landed.
+                    if gesture == "up" and drone.phase == "landed" and not fired:
+                        print(drone.takeoff())
+                        fired = True
+                    elif gesture in MOVES:
                         drone.move(*MOVES[gesture], dt)
-                    elif gesture == "land" and not land_fired:
+                    elif gesture == "land" and drone.is_flying and not fired:
                         print(drone.land())
-                        land_fired = True
+                        fired = True
 
                 color = COLORS["success"] if confidence >= CONFIDENCE_THRESHOLD else COLORS["secondary"]
                 cv2.rectangle(frame, box[:2], box[2:], color, 3)
@@ -273,6 +310,7 @@ def main():
             prob_window.clear()
             stable_gesture = None
 
+        drone.update(dt)
         draw_ui(frame, drone, trail, gesture, confidence, probs, class_names, active)
         cv2.imshow("Drone Gesture Control", frame)
 

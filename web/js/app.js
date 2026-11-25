@@ -90,6 +90,7 @@ function readTheme() {
   theme = {
     surface2: v("--surface-2"), grid: v("--grid"), border: v("--border"), text: v("--text"),
     muted: v("--muted"), accent: v("--accent"), drone: v("--drone"), danger: v("--danger"),
+    dark: matchMedia("(prefers-color-scheme: dark)").matches,
   };
 }
 readTheme();
@@ -145,7 +146,7 @@ async function runCompare(lms) {
 // ------------------------------------------------------------------ per-frame processing
 
 async function processHand(lms, now, live) {
-  const dt = Math.min(0.1, (now - lastTick) / 1000);
+  const dt = Math.min(0.5, (now - lastTick) / 1000); // cap so a stall can't teleport the drone
   lastTick = now;
 
   if (lms && recording && live) captureSample(lms, now);
@@ -163,7 +164,7 @@ async function processHand(lms, now, live) {
   lastResult = result;
 
   if (live && result && result.active && result.index >= 0) {
-    const action = actionFor(result.index);
+    const action = effectiveAction(actionFor(result.index));
     const def = store.actionById[action];
     if (def?.oneShot) {
       if (!smoother.fired) {
@@ -182,6 +183,12 @@ async function processHand(lms, now, live) {
     await runCompare(lms);
   }
   renderGesture();
+}
+
+// The trained models have no "take off" class, so the Climb gesture (thumbs up
+// by default) takes off when the drone is on the ground.
+function effectiveAction(action) {
+  return action === "up" && drone.phase === "landed" ? "takeoff" : action;
 }
 
 function stillResult(probs) {
@@ -404,7 +411,7 @@ function renderGesture() {
   const name = r.index >= 0 ? r.classes[r.index] : r.unknown ? "unknown" : "—";
   $("gestureName").textContent = name;
   $("gestureConf").textContent = r.index >= 0 ? `${Math.round(r.confidence * 100)}%` : "";
-  const action = actionFor(r.index);
+  const action = effectiveAction(actionFor(r.index));
   const label = store.actionById[action]?.label || "Do nothing";
   let text = r.unknown ? "Doesn't match any custom gesture" : `→ ${label}`;
   if (!r.live) {
@@ -412,8 +419,11 @@ function renderGesture() {
   } else if (r.index >= 0 && !r.active && action !== "none") {
     text += r.confidence < state.settings.confidence ? " (low confidence)" : " (hold…)";
   }
-  if (r.index >= 0 && r.active && !drone.flying && action !== "takeoff" && action !== "none") {
-    text += " — take off first";
+  if (r.index >= 0 && r.active && !drone.flying && !store.actionById[action]?.oneShot && action !== "none") {
+    text += " — take off first (Climb gesture or T)";
+  } else if (r.index >= 0 && r.active && (drone.phase === "takeoff" || drone.phase === "landing")
+             && !store.actionById[action]?.oneShot && action !== "none") {
+    text += ` — wait, ${drone.statusText.toLowerCase()}`;
   }
   $("gestureAction").textContent = text;
   card.classList.toggle("active", !!r.active && action !== "none");
@@ -430,15 +440,45 @@ function renderGesture() {
 
 function renderTelemetry() {
   $("telemetry").innerHTML = [
-    ["Status", drone.flying ? "Flying" : "Landed"],
+    ["Status", drone.statusText],
     ["Altitude", Math.round(drone.y)],
     ["Position", `${Math.round(drone.x)}, ${Math.round(-drone.z)}`],
     ["Heading", `${Math.round(drone.heading)}°`],
   ].map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("");
 }
 
-function droneLoop() {
-  renderDrone($("droneCanvas"), drone, theme);
+let lastDroneTick = performance.now();
+let view3d = null; // {render, resetTrail} once three.js has loaded
+let view3dLoading = null;
+
+function setView(view) {
+  state.settings.view = view;
+  persist();
+  $("viewSwitch").querySelectorAll("button").forEach((b) => b.classList.toggle("active", b.dataset.view === view));
+  $("drone3d").hidden = view !== "3d";
+  $("droneCanvas").hidden = view === "3d";
+  if (view === "3d" && !view3d && !view3dLoading) {
+    view3dLoading = import("./drone3d.js")
+      .then((m) => m.createDrone3D($("drone3d")))
+      .then((v) => { view3d = v; })
+      .catch((e) => {
+        console.error(e);
+        toast("3D view unavailable here (needs WebGL) — showing the map.", 4000);
+        setView("map");
+      })
+      .finally(() => { view3dLoading = null; });
+  }
+}
+
+function droneLoop(now = performance.now()) {
+  const dt = Math.min(0.5, (now - lastDroneTick) / 1000);
+  drone.update(dt);
+  lastDroneTick = now;
+  if (state.settings.view === "3d") {
+    if (view3d) view3d.render(drone, theme, dt);
+  } else {
+    renderDrone($("droneCanvas"), drone, theme);
+  }
   renderTelemetry();
   requestAnimationFrame(droneLoop);
 }
@@ -620,13 +660,15 @@ function wire() {
   };
   $("takeoffBtn").onclick = () => toast(drone.takeoff(), 1200);
   $("landBtn").onclick = () => toast(drone.land(), 1200);
-  $("resetBtn").onclick = () => drone.reset();
+  $("resetBtn").onclick = () => { drone.reset(); view3d?.resetTrail(); };
+  $("viewSwitch").querySelectorAll("button").forEach((b) => (b.onclick = () => setView(b.dataset.view)));
   document.addEventListener("keydown", (e) => {
     if (e.target.matches("input, select, textarea")) return;
     const k = e.key.toLowerCase();
     if (k === "t") toast(drone.takeoff(), 1200);
     else if (k === "l") toast(drone.land(), 1200);
-    else if (k === "r") drone.reset();
+    else if (k === "r") { drone.reset(); view3d?.resetTrail(); }
+    else if (k === "v") setView(state.settings.view === "3d" ? "map" : "3d");
     else if (["1", "2", "3"].includes(k)) {
       const m = [...models.keys()][+k - 1];
       if (m) switchModel(m);
@@ -703,6 +745,7 @@ async function main() {
   if (!state.starterLoaded && !state.custom.length) await loadStarter();
   renderSettings();
   renderGesturesTab();
+  setView(state.settings.view === "map" ? "map" : "3d");
   requestAnimationFrame(droneLoop);
   setupSamples();
 

@@ -1,38 +1,65 @@
 // Simulated drone and its top-down view.
 // x: east/west, z: north/south (both -150..150), y: altitude 0..200, heading in degrees.
 
+// phase: "landed" -> "takeoff" (climbing to cruiseAlt) -> "flying" -> "landing" (descending) -> "landed"
 export class Drone {
   constructor() {
     this.bound = 150;
     this.maxAlt = 200;
     this.minFlyAlt = 20;
+    this.cruiseAlt = 50;
+    this.climbRate = 60; // units/s during takeoff
+    this.sinkRate = 70; // units/s during landing
     this.reset(true);
+  }
+
+  /** True from the moment of takeoff until touchdown. */
+  get flying() { return this.phase !== "landed"; }
+
+  /** True only once airborne and accepting movement commands. */
+  get controllable() { return this.phase === "flying"; }
+
+  get statusText() {
+    return { landed: "Landed", takeoff: "Taking off", flying: "Flying", landing: "Landing" }[this.phase];
   }
 
   reset(full = false) {
     this.x = 0; this.z = 0; this.heading = 0;
-    if (full) { this.y = 0; this.flying = false; }
-    else this.y = this.flying ? 50 : 0;
+    if (full || this.phase === "landed" || this.phase === undefined) { this.y = 0; this.phase = "landed"; }
+    else { this.y = this.cruiseAlt; this.phase = "flying"; }
     this.trail = [];
     this.lastAction = "none";
   }
 
   takeoff() {
-    if (this.flying) return "Already flying";
-    this.flying = true; this.y = 50;
-    return "Took off";
+    if (this.phase === "takeoff") return "Taking off…";
+    if (this.phase === "flying") return "Already flying";
+    this.phase = "takeoff"; // also aborts a landing in progress
+    return "Taking off";
   }
 
   land() {
-    if (!this.flying) return "Already landed";
-    this.flying = false; this.y = 0;
-    return "Landed";
+    if (this.phase === "landed") return "Already landed";
+    if (this.phase === "landing") return "Landing…";
+    this.phase = "landing";
+    return "Landing";
+  }
+
+  /** Advance takeoff/landing animations. Call every frame. */
+  update(dt) {
+    if (this.phase === "takeoff") {
+      this.y = Math.min(this.cruiseAlt, this.y + this.climbRate * dt);
+      if (this.y >= this.cruiseAlt) this.phase = "flying";
+    } else if (this.phase === "landing") {
+      this.y = Math.max(0, this.y - this.sinkRate * dt);
+      if (this.y <= 0) this.phase = "landed";
+    }
   }
 
   /** Apply a continuous action for dt seconds at `speed` units/s. */
   apply(action, dt, speed) {
     this.lastAction = action;
-    if (!this.flying) return;
+    if (!this.controllable) return;
     const rad = (this.heading * Math.PI) / 180;
     const fwd = [Math.sin(rad), -Math.cos(rad)]; // heading 0 = up on the map
     const right = [Math.cos(rad), Math.sin(rad)];
@@ -90,7 +117,7 @@ export function renderDrone(canvas, drone, theme) {
 
   // Trail
   const px = mx + toPx(drone.x), pz = my + toPx(drone.z);
-  if (drone.flying) {
+  if (drone.controllable) {
     const last = drone.trail[drone.trail.length - 1];
     if (!last || Math.hypot(last[0] - drone.x, last[1] - drone.z) > 2) drone.trail.push([drone.x, drone.z]);
     if (drone.trail.length > 80) drone.trail.shift();

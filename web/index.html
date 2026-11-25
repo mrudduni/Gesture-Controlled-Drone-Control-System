@@ -56,13 +56,20 @@
     <!-- Drone -->
     <section class="panel drone-panel">
       <div class="panel-head">
-        <h2>Drone</h2>
+        <div class="row">
+          <h2>Drone</h2>
+          <div class="seg" id="viewSwitch" role="group" aria-label="Drone view">
+            <button data-view="3d">3D</button>
+            <button data-view="map">Map</button>
+          </div>
+        </div>
         <div class="row">
           <button id="takeoffBtn" class="btn">Take off <kbd>T</kbd></button>
           <button id="landBtn" class="btn">Land <kbd>L</kbd></button>
           <button id="resetBtn" class="btn ghost">Reset <kbd>R</kbd></button>
         </div>
       </div>
+      <canvas id="drone3d" class="drone-canvas drone-3d" hidden></canvas>
       <canvas id="droneCanvas" class="drone-canvas"></canvas>
       <div class="telemetry" id="telemetry"></div>
       <div class="gesture-card" id="gestureCard">
@@ -87,7 +94,7 @@
       <div class="tab-body" data-body="gestures">
         <div id="builtinSection">
           <h3>Model gestures</h3>
-          <p class="muted small">The three trained models know these six hand poses. Choose what each one makes the drone do.</p>
+          <p class="muted small">The three trained models know these six hand poses. Choose what each one makes the drone do. A gesture set to <b>Climb</b> also takes off while the drone is on the ground.</p>
           <div class="map-grid" id="builtinMap"></div>
         </div>
         <div id="customSection">

@@ -7,3 +7,5 @@
 /.venv-export/
 /*.py
 /requirements*.txt
+/demo/
+/scripts/
